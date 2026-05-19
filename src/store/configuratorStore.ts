@@ -96,6 +96,21 @@ export const formatPrice = (value: number): string => {
   }).format(value);
 };
 
+export const migrateConfiguratorState = (persistedState: {
+  configuration?: { optionals?: unknown };
+  [key: string]: unknown;
+}) => {
+  if (persistedState?.configuration) {
+    const raw = persistedState.configuration.optionals;
+    const optionals = Array.isArray(raw) ? raw : [];
+    persistedState.configuration.optionals = optionals.filter(
+      (opt: unknown) =>
+        typeof opt === 'string' && opt in (OPTIONAL_PRICES as Record<string, number>)
+    );
+  }
+  return persistedState;
+};
+
 export const useConfiguratorStore = create<ConfiguratorState>()(
   persist(
     (set, get) => ({
@@ -175,16 +190,7 @@ export const useConfiguratorStore = create<ConfiguratorState>()(
     {
       name: 'velo-configurator-storage',
       version: 2,
-      migrate: (persistedState: any) => {
-        if (persistedState?.configuration) {
-          const raw = persistedState.configuration.optionals;
-          const optionals = Array.isArray(raw) ? raw : [];
-          persistedState.configuration.optionals = optionals.filter(
-            (opt: any) => typeof opt === 'string' && opt in (OPTIONAL_PRICES as Record<string, number>)
-          );
-        }
-        return persistedState;
-      },
+      migrate: migrateConfiguratorState,
     }
   )
 );
