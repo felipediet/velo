@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test'
 
-import { createCheckoutActions } from './actions/checkoutActions'
+import { createCheckoutActions } from './actions/checkOutActions'
 import { createConfiguratorActions } from './actions/configuratorActions'
 import { createLookupActions } from './actions/lookupActions'
 import { createOrderLookupActions } from './actions/orderLookupActions'
