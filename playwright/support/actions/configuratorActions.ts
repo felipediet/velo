@@ -36,19 +36,9 @@ export function createConfiguratorActions(page: Page) {
      * e sem hash (desenvolvimento).
      * @param src caminho esperado da imagem do carro
      */
-    async expectCarImageSrc(src: string) {
+    async expectCarImageSrc(src: string | RegExp) {
       const carImage = page.locator('img[alt^="Velô Sprint"]')
-      const fileName = src.split('/').pop() ?? src
-      const dotIndex = fileName.lastIndexOf('.')
-      const baseName = dotIndex >= 0 ? fileName.slice(0, dotIndex) : fileName
-      const extension = dotIndex >= 0 ? fileName.slice(dotIndex + 1) : ''
-
-      const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const expectedPattern = new RegExp(
-        `/assets/${escapeRegex(baseName)}(?:-[A-Za-z0-9_-]+)?\\.${escapeRegex(extension)}$`
-      )
-
-      await expect(carImage).toHaveAttribute('src', expectedPattern)
+      await expect(carImage).toHaveAttribute('src', src)
     },
 
     /** Marca um opcional pelo nome. */
