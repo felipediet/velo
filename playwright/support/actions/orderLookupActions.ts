@@ -70,7 +70,7 @@ export function createOrderLookupActions(page: Page) {
       - paragraph: Cor
       - paragraph: ${order.color}
       - paragraph: Interior
-      - paragraph: cream
+      - paragraph: carbon black
       - paragraph: Rodas
       - paragraph: ${order.wheels}
       - heading "Dados do Cliente" [level=4]
