@@ -18,7 +18,7 @@ export interface DbOrder {
   updated_at: string;
 }
 
-function generateOrderNumber(): string {
+export function generateOrderNumber(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = 'VLO-';
   for (let i = 0; i < 6; i++) {
@@ -27,7 +27,7 @@ function generateOrderNumber(): string {
   return result;
 }
 
-function dbOrderToOrder(dbOrder: DbOrder): Order {
+export function dbOrderToOrder(dbOrder: DbOrder): Order {
   const nameParts = dbOrder.customer_name.split(' ');
   const firstName = nameParts[0] || '';
   const surname = nameParts.slice(1).join(' ') || '';
@@ -36,7 +36,7 @@ function dbOrderToOrder(dbOrder: DbOrder): Order {
     id: dbOrder.order_number,
     configuration: {
       exteriorColor: dbOrder.color as CarConfiguration['exteriorColor'],
-      interiorColor: 'cream' as CarConfiguration['interiorColor'],
+      interiorColor: 'carbon-black' as CarConfiguration['interiorColor'],
       wheelType: dbOrder.wheel_type as CarConfiguration['wheelType'],
       optionals: (dbOrder.optionals || []) as OptionalFeature[],
     },
