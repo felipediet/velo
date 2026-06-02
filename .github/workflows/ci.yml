@@ -115,9 +115,10 @@ jobs:
 
       # 6. Executa os testes end-to-end com Playwright
       - name: Run E2E Tests
-        run: yarn playwright test playwright/e2e/online.spec.ts
         env:
           BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
+        run: yarn playwright test playwright/e2e/online.spec.ts
+        
 
       # 7. Relatório de testes end-to-end
       - name: Upload E2E Test Report
