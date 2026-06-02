@@ -121,7 +121,11 @@ jobs:
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: playwright-report/results.xml
         run: yarn playwright test playwright/e2e/online.spec.ts --reporter=github,junit,html
 
-      # 6. Publica o resumo dos testes no dashboard/checks do GitHub Actions
+      # 6. Corrige ownership do repositório no ambiente em container
+      - name: Configure Git Safe Directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # 7. Publica o resumo dos testes no dashboard/checks do GitHub Actions
       - name: Publish E2E Summary
         if: ${{ !cancelled() }}
         uses: dorny/test-reporter@v2
@@ -131,7 +135,7 @@ jobs:
           reporter: java-junit
           fail-on-error: false
         
-      # 7. Relatório HTML dos testes end-to-end
+      # 8. Relatório HTML dos testes end-to-end
       - name: Upload E2E Test Report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.1
