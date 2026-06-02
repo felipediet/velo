@@ -109,9 +109,12 @@ jobs:
       - name: Install Dependencies
         run: yarn install
 
-      # 5. Instalação do Chromium para os testes com Playwright
-      - name: Install Playwright Browser - Chromium
-        run: yarn playwright install --with-deps chromium
+      # 5. Instalação do Chromium (sem --with-deps: apt-get trava no ubuntu-latest)
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
 
       # 6. Executa os testes end-to-end com Playwright
       - name: Run E2E Tests
