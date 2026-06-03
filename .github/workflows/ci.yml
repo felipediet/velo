@@ -130,3 +130,17 @@ jobs:
           keep_files: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      # 7. Exibe link do relatório no summary da execução
+      - name: Add report link to summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## Playwright Report"
+            echo ""
+            echo "Publicação concluída com sucesso."
+            echo ""
+            echo "Clique no link abaixo para ver o relatório:"
+            echo ""
+            echo "- https://felipediet.github.io/velo/"
+          } >> "$GITHUB_STEP_SUMMARY"
