@@ -32,5 +32,6 @@ dist-ssr
 /.playwright-mcp/
 ./.playwright-mcp/
 
-
 .vercel
+
+.env*
