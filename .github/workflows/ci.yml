@@ -1,6 +1,7 @@
-# Pipeline principal de deploy: valida em preview e promove para produção somente após sucesso dos testes E2E.
+# Workflow responsável por executar os testes unitários a cada push na branch main.
+# Estrutura preparada para receber novos jobs (ex: e2e, lint, build) no futuro.
 
-name: Continuous Deployment Main
+name: Continuous Deployment
 
 on:
   push:
@@ -24,103 +25,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Faz o checkout do repositório
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
+      # 2. Configura o Node.js na versão definida na variável global
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # 3. Habilita o Corepack para gerenciar o Yarn
       - name: Enable Corepack
         run: corepack enable
 
+      # 4. Instala as dependências do projeto
       - name: Install Dependencies
         run: yarn install
 
+      # 5. Executa os testes unitários com Vitest
       - name: Run Unit Tests
         run: yarn test
 
-  supabase-sync-preview:
-    name: Supabase Sync Preview
-    needs: [unit-tests]
-    runs-on: ubuntu-latest
-    environment: preview
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install Dependencies
-        run: yarn install
-
-      - name: Link Supabase Preview Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-        run: yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PREVIEW"
-
-      - name: Push Preview Migrations
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD_PREVIEW: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
-        run: yarn supabase db push --linked --password "$SUPABASE_DB_PASSWORD_PREVIEW"
-
-      - name: Deploy Preview Edge Function
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-        run: yarn supabase functions deploy credit-analysis --project-ref "$SUPABASE_PROJECT_REF_PREVIEW"
-
-      - name: Validate Preview Edge Function
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-        run: |
-          yarn supabase functions list --project-ref "$SUPABASE_PROJECT_REF_PREVIEW" | grep -q "credit-analysis"
-
   build-and-deploy-preview:
     name: Build and Deploy Vercel Preview
-    needs: [unit-tests, supabase-sync-preview]
+    needs: [unit-tests]
     runs-on: ubuntu-latest
-    environment: preview
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
 
     steps:
+      # 1. Faz o checkout do repositório
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
+      # 2. Configura o Node.js na versão definida na variável global
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # 3. Habilita o Corepack para gerenciar o Yarn
       - name: Enable Corepack
         run: corepack enable
 
+      # 4. Instala as dependências do projeto
       - name: Install Dependencies
         run: yarn install
 
+      # 5. Obter as configurações do Vercel para o projeto
       - name: Pull Vercel Config
-        run: yarn vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+        run: yarn vercel pull --yes --environment=Preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
+      # 6. Build para o Vercel
       - name: Build for Vercel
-        run: yarn vercel build --target=preview --token=$VERCEL_TOKEN
+        run: yarn vercel build --token=$VERCEL_TOKEN
 
+      # 7. Deploy Preview para o Vercel
       - name: Deploy to Vercel Preview
         id: deploy
         run: |
-          URL=$(yarn --silent vercel deploy --prebuilt --target=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
-          echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
+          URL=$(yarn --silent vercel deploy --prebuilt --target=Preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
+            echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
 
   e2e-tests:
     name: End-to-End Tests
@@ -128,28 +94,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Faz o checkout do repositório
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
+      # 2. Configura o Node.js na versão definida na variável global
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # 3. Habilita o Corepack para gerenciar o Yarn
       - name: Enable Corepack
         run: corepack enable
 
+      # 4. Instala as dependências do projeto
       - name: Install Dependencies
         run: yarn install
 
+      # 5. Instala os navegadores do Playwright
       - name: Install Playwright Browsers
         run: yarn playwright install chromium
 
+      # 6. Executa os testes end-to-end com Playwright
       - name: Run E2E Tests
         env:
           BASE_URL: ${{ needs.build-and-deploy-preview.outputs.deployment-url }}
         run: yarn playwright test --reporter=github,junit,html
 
+      # 7. Garante uma página mesmo quando o relatório HTML não é gerado
       - name: Publish Report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -159,6 +132,7 @@ jobs:
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
+      # 8. Exibe link do relatório no summary da execução
       - name: Add report link to summary
         if: ${{ !cancelled() }}
         run: |
@@ -172,88 +146,43 @@ jobs:
             echo "- https://felipediet.github.io/velo/"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  supabase-sync-production:
-    name: Supabase Sync Production
-    needs: [e2e-tests]
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install Dependencies
-        run: yarn install
-
-      - name: Validate Supabase Production Secrets
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
-          SUPABASE_DB_PASSWORD_PRODUCTION: ${{ secrets.SUPABASE_DB_PASSWORD_PRODUCTION }}
-        run: |
-          test -n "$SUPABASE_ACCESS_TOKEN"
-          test -n "$SUPABASE_PROJECT_REF_PRODUCTION"
-          test -n "$SUPABASE_DB_PASSWORD_PRODUCTION"
-
-      - name: Link Supabase Production Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
-        run: yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION"
-
-      - name: Push Production Migrations
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD_PRODUCTION: ${{ secrets.SUPABASE_DB_PASSWORD_PRODUCTION }}
-        run: yarn supabase db push --linked --password "$SUPABASE_DB_PASSWORD_PRODUCTION"
-
-      - name: Deploy Production Edge Function
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
-        run: yarn supabase functions deploy credit-analysis --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION"
-
-      - name: Validate Production Edge Function
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
-        run: |
-          yarn supabase functions list --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION" | grep -q "credit-analysis"
-
-  promote-production:
+  build-and-deploy-production:
     name: Build and Deploy Vercel Production
-    needs: [build-and-deploy-preview, e2e-tests, supabase-sync-production]
+    needs: [build-and-deploy-preview, e2e-tests]
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      production-deployment-url: ${{ steps.deploy.outputs.deployment-url }}
 
     steps:
+      # 1. Faz o checkout do repositório
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
+      # 2. Configura o Node.js na versão definida na variável global
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # 3. Habilita o Corepack para gerenciar o Yarn
       - name: Enable Corepack
         run: corepack enable
 
+      # 4. Instala as dependências do projeto
       - name: Install Dependencies
         run: yarn install
 
-      - name: Pull Vercel Config (Production)
-        run: yarn vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+      # 5. Obter as configurações do Vercel para o projeto
+      - name: Pull Vercel Config
+        run: yarn vercel pull --yes --environment=Production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
-      - name: Build for Vercel (Production)
-        run: yarn vercel build --target=production --token=$VERCEL_TOKEN
+      # 6. Build para o Vercel
+      - name: Build for Vercel
+        run: yarn vercel build --token=$VERCEL_TOKEN
 
+      # 7. Deploy Production para o Vercel
       - name: Deploy to Vercel Production
-        run: yarn --silent vercel deploy --prebuilt --target=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+        id: deploy
+        run: |
+          URL=$(yarn --silent vercel deploy --prebuilt --target=Production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
+            echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
