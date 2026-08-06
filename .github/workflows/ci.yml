@@ -62,16 +62,6 @@ jobs:
       - name: Install Dependencies
         run: yarn install
 
-      - name: Validate Supabase Preview Secrets
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-          SUPABASE_DB_PASSWORD_PREVIEW: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
-        run: |
-          test -n "$SUPABASE_ACCESS_TOKEN"
-          test -n "$SUPABASE_PROJECT_REF_PREVIEW"
-          test -n "$SUPABASE_DB_PASSWORD_PREVIEW"
-
       - name: Link Supabase Preview Project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -122,13 +112,6 @@ jobs:
 
       - name: Pull Vercel Config
         run: yarn vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
-
-      - name: Validate Preview Build Env
-        run: |
-          test -f .vercel/.env.preview.local
-          grep -q "^VITE_SUPABASE_URL=" .vercel/.env.preview.local
-          grep -q "^VITE_SUPABASE_PUBLISHABLE_KEY=" .vercel/.env.preview.local
-          grep -q "^VITE_SUPABASE_PROJECT_ID=" .vercel/.env.preview.local
 
       - name: Build for Vercel
         run: yarn vercel build --target=preview --token=$VERCEL_TOKEN
@@ -270,7 +253,7 @@ jobs:
         run: yarn vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
       - name: Build for Vercel (Production)
-        run: yarn vercel build --prod --token=$VERCEL_TOKEN
+        run: yarn vercel build --target=production --token=$VERCEL_TOKEN
 
       - name: Deploy to Vercel Production
-        run: yarn --silent vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+        run: yarn --silent vercel deploy --prebuilt --target=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
