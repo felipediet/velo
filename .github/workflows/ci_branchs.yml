@@ -91,8 +91,6 @@ jobs:
     name: End-to-End Tests
     needs: [build-and-deploy]
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.59.1-noble
 
     steps:
       # 1. Faz o checkout do repositório
@@ -113,13 +111,17 @@ jobs:
       - name: Install Dependencies
         run: yarn install
 
-      # 5. Executa os testes end-to-end com Playwright
+      # 5. Instala os navegadores do Playwright sem dependências do sistema
+      - name: Install Playwright Browsers
+        run: yarn playwright install chromium
+
+      # 6. Executa os testes end-to-end com Playwright
       - name: Run E2E Tests
         env:
           BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
         run: yarn playwright test --reporter=github,junit,html
 
-      # 6. Garante uma página mesmo quando o relatório HTML não é gerado
+      # 7. Garante uma página mesmo quando o relatório HTML não é gerado
       - name: Publish Report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -129,7 +131,7 @@ jobs:
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
-      # 7. Exibe link do relatório no summary da execução
+      # 8. Exibe link do relatório no summary da execução
       - name: Add report link to summary
         if: ${{ !cancelled() }}
         run: |

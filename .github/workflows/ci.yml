@@ -41,6 +41,62 @@ jobs:
       - name: Run Unit Tests
         run: yarn test
 
+  supabase-sync-preview:
+    name: Supabase Sync Preview
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    environment: preview
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Validate Supabase Preview Secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+          SUPABASE_DB_PASSWORD_PREVIEW: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PROJECT_REF_PREVIEW"
+          test -n "$SUPABASE_DB_PASSWORD_PREVIEW"
+
+      - name: Link Supabase Preview Project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+        run: yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PREVIEW"
+
+      - name: Push Preview Migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD_PREVIEW: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
+        run: yarn supabase db push --linked --password "$SUPABASE_DB_PASSWORD_PREVIEW"
+
+      - name: Deploy Preview Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+        run: yarn supabase functions deploy credit-analysis --project-ref "$SUPABASE_PROJECT_REF_PREVIEW"
+
+      - name: Validate Preview Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+        run: |
+          yarn supabase functions list --project-ref "$SUPABASE_PROJECT_REF_PREVIEW" | grep -q "credit-analysis"
+
   build-and-deploy-preview:
     name: Build and Deploy Vercel Preview
     needs: [unit-tests]
@@ -78,10 +134,8 @@ jobs:
 
   e2e-tests:
     name: End-to-End Tests
-    needs: [build-and-deploy-preview]
+    needs: [build-and-deploy-preview, supabase-sync-preview]
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.59.1-noble
 
     steps:
       - name: Checkout
@@ -97,6 +151,9 @@ jobs:
 
       - name: Install Dependencies
         run: yarn install
+
+      - name: Install Playwright Browsers
+        run: yarn playwright install chromium
 
       - name: Run E2E Tests
         env:
@@ -125,12 +182,88 @@ jobs:
             echo "- https://felipediet.github.io/velo/"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  promote-production:
-    name: Promote to Production
-    needs: [build-and-deploy-preview, e2e-tests]
+  supabase-sync-production:
+    name: Supabase Sync Production
+    needs: [e2e-tests]
     runs-on: ubuntu-latest
     environment: production
 
     steps:
-      - name: Promote to Production
-        run: npx vercel@latest promote ${{ needs.build-and-deploy-preview.outputs.deployment-url }} --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE --yes
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Validate Supabase Production Secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+          SUPABASE_DB_PASSWORD_PRODUCTION: ${{ secrets.SUPABASE_DB_PASSWORD_PRODUCTION }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PROJECT_REF_PRODUCTION"
+          test -n "$SUPABASE_DB_PASSWORD_PRODUCTION"
+
+      - name: Link Supabase Production Project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+        run: yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION"
+
+      - name: Push Production Migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD_PRODUCTION: ${{ secrets.SUPABASE_DB_PASSWORD_PRODUCTION }}
+        run: yarn supabase db push --linked --password "$SUPABASE_DB_PASSWORD_PRODUCTION"
+
+      - name: Deploy Production Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+        run: yarn supabase functions deploy credit-analysis --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION"
+
+      - name: Validate Production Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+        run: |
+          yarn supabase functions list --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION" | grep -q "credit-analysis"
+
+  promote-production:
+    name: Build and Deploy Vercel Production
+    needs: [build-and-deploy-preview, e2e-tests, supabase-sync-production]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Pull Vercel Config (Production)
+        run: yarn vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+
+      - name: Build for Vercel (Production)
+        run: yarn vercel build --prod --token=$VERCEL_TOKEN
+
+      - name: Deploy to Vercel Production
+        run: yarn --silent vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE

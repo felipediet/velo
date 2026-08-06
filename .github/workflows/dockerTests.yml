@@ -20,7 +20,7 @@ jobs:
       run: corepack enable && yarn install --frozen-lockfile
 
     - name: Install Playwright Browsers
-      run: yarn playwright install --with-deps
+      run: yarn playwright install chromium
 
     - name: Build Docker image (VELO)
       run: docker build -t velo-web:e2e .
