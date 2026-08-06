@@ -123,8 +123,15 @@ jobs:
       - name: Pull Vercel Config
         run: yarn vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
+      - name: Validate Preview Build Env
+        run: |
+          test -f .vercel/.env.preview.local
+          grep -q "^VITE_SUPABASE_URL=" .vercel/.env.preview.local
+          grep -q "^VITE_SUPABASE_PUBLISHABLE_KEY=" .vercel/.env.preview.local
+          grep -q "^VITE_SUPABASE_PROJECT_ID=" .vercel/.env.preview.local
+
       - name: Build for Vercel
-        run: yarn vercel build --token=$VERCEL_TOKEN
+        run: yarn vercel build --target=preview --token=$VERCEL_TOKEN
 
       - name: Deploy to Vercel Preview
         id: deploy
