@@ -99,7 +99,7 @@ jobs:
 
   build-and-deploy-preview:
     name: Build and Deploy Vercel Preview
-    needs: [unit-tests]
+    needs: [unit-tests, supabase-sync-preview]
     runs-on: ubuntu-latest
     environment: preview
     outputs:
@@ -134,7 +134,7 @@ jobs:
 
   e2e-tests:
     name: End-to-End Tests
-    needs: [build-and-deploy-preview, supabase-sync-preview]
+    needs: [build-and-deploy-preview]
     runs-on: ubuntu-latest
 
     steps:
