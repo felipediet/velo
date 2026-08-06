@@ -73,6 +73,15 @@ jobs:
       - name: Install Dependencies
         run: yarn install
 
+      - name: Link Supabase Preview Project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PREVIEW: ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+        run: |
+          yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PREVIEW"
+          echo "SUPABASE_ACCESS_TOKEN=${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          echo "SUPABASE_PROJECT_REF_PREVIEW=${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}"
+
       # 5. Obter as configurações do Vercel para o projeto
       - name: Pull Vercel Config
         run: yarn vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
@@ -171,6 +180,15 @@ jobs:
       # 4. Instala as dependências do projeto
       - name: Install Dependencies
         run: yarn install
+
+      - name: Link Supabase Production Project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+        run: |
+          yarn supabase link --project-ref "$SUPABASE_PROJECT_REF_PRODUCTION"
+          echo "SUPABASE_ACCESS_TOKEN=${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          echo "SUPABASE_PROJECT_REF_PRODUCTION=${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}"
 
       # 5. Obter as configurações do Vercel para o projeto
       - name: Pull Vercel Config
